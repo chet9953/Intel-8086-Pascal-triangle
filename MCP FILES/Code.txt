@@ -1,0 +1,139 @@
+data segment
+msg2 db " $"
+data ends
+code segment
+assume cs:code,ds:data,es:data
+start:
+mov ax,data
+mov ds,ax
+mov ax,data
+mov es,ax
+mov di,0
+PUTC MACRO char
+ PUSH AX
+ MOV AL, char
+ MOV AH, 0Eh
+ INT 10h
+ POP AX
+ENDM
+mov cx,0004h
+mov bh,0ffh
+;;;;
+l1:
+call print_nl
+inc bh
+mov bl,bh
+l2:
+mov al,bh
+call factorial
+;; n factorial
+mov dh,al
+mov al,bl
+call factorial
+;; k factorial
+mov dl,al
+mov al,bh
+sub al,bl
+call factorial
+;n-k fact fatcorial
+mul dl
+mov cl,al
+mov al,dh
+div cl
+stosb
+;
+;
+;
+mov ah,0h;
+;call print_num
+call PRINT_NUM_UNS
+dec bl
+cmp bl,0ffh
+jnz l2
+;;;;
+cmp bh,04h
+jnz l1
+;;;;
+hlt
+factorial proc near
+mov cl,al
+mov ax,1
+cmp cl,0
+je nop
+agn:
+mul cl
+cmp cl,01
+loopne agn
+nop:
+ret
+factorial endp
+;;;;
+print_nl proc
+push ax
+push dx
+mov ah,2
+mov dl,0dh
+int 21h
+mov dl,0ah
+int 21h
+pop dx
+pop ax
+ret
+print_nl endp
+;; proc to print unsigned
+PRINT_NUM_UNS PROC NEAR
+ PUSH AX
+ PUSH BX
+ PUSH CX
+ PUSH DX
+ ; flag to prevent printing zeros before number:
+ MOV CX, 1
+ ; (result of "/ 10000" is always less or equal to 9).
+ MOV BX, 10000 ; 2710h - divider.
+ ; AX is zero?
+ CMP AX, 0
+ JZ print_zero
+begin_print:
+ ; check divider (if zero go to end_print):
+ CMP BX,0
+ JZ end_print
+ ; avoid printing zeros before number:
+ CMP CX, 0
+ JE calc
+ ; if AX<BX then result of DIV will be zero:
+ CMP AX, BX
+ JB skip
+calc:
+ MOV CX, 0 ; set flag.
+ MOV DX, 0
+ DIV BX ; AX = DX:AX / BX (DX=remainder).
+ ; print last digit
+ ; AH is always ZERO, so it's ignored
+ ADD AL, 30h ; convert to ASCII code.
+ PUTC AL
+ MOV AX, DX ; get remainder from last div.
+skip:
+ ; calculate BX=BX/10
+ PUSH AX
+ MOV DX, 0
+ MOV AX, BX
+ DIV CS:ten ; AX = DX:AX / 10 (DX=remainder).
+ MOV BX, AX
+ POP AX
+ JMP begin_print
+
+print_zero:
+ PUTC '0'
+
+end_print:
+ POP DX
+ POP CX
+ POP BX
+ POP AX
+ RET
+ten DW 10 ; used as divider.
+PRINT_NUM_UNS ENDP
+mov ah,4ch
+int 21h
+code ends
+end start
